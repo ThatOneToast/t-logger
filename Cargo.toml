@@ -1,9 +1,9 @@
 [package]
 name = "tlogger"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Toast <ThatOneToast@proton.me>"]
-description = "A simple logging library with a neat style."
+description = "A simple logging library with a neat style and customizablity."
 repository = "https://github.com/ThatOneToast/t-logger"
 license = "MIT"
 keywords = ["log", "logging", "toast", "logger", "tlog"]
