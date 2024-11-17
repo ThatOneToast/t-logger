@@ -1,11 +1,20 @@
 [package]
-name = "t_logger"
+name = "tlog"
 version = "0.1.0"
 edition = "2021"
+authors = ["Toast <ThatOneToast@proton.me>"]
+description = "A simple logging library with a neat style."
+repository = "https://github.com/ThatOneToast/t-logger"
+license = "MIT"
+keywords = ["log", "logging", "toast", "logger", "tlog"]
+categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
+homepage = "https://github.com/ThatOneToast/t-logger"
 
 [lib]
-name = "t_logger"
+name = "tlog"
 path = "src/lib.rs"
+
 
 [dependencies]
 chrono = "0.4.38"
