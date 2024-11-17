@@ -1,0 +1,10 @@
+ℹ  22:51:18.257 │ System Starting
+✔  22:51:18.261 │ Login User Alice connected
+⁂  22:51:18.262 │ Processing Items in queue: 42
+⚠  22:51:18.263 │ Memory Usage at 85%
+✖  22:51:18.263 │ Database Connection failed
+⁂  22:51:18.264 │ System Your super secure super system is starting up.
+⁂  22:51:18.264 │ Memory Memory usage is at 85%
+⁂  22:51:18.265 │ Database Database connection failed
+⁂  22:51:18.265 │ Login User Alice connected
+⁂  22:51:18.266 │ Processing Items in queue: 42
