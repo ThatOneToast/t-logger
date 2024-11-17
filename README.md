@@ -18,7 +18,13 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-t_logger = "0.1.0"
+tlogger = "0.1.0"
+```
+
+Or use the `cargo add` command:
+
+```bash
+cargo add tlogger
 ```
 
 ## Usage
