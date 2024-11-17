@@ -203,7 +203,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tlog"
+name = "tlogger"
 version = "0.1.0"
 dependencies = [
  "chrono",
