@@ -4,6 +4,7 @@ use logger::Logger;
 use styling::*;
 
 pub mod logger;
+pub mod prelude;
 mod styling;
 mod tests;
 
@@ -38,12 +39,18 @@ pub const BORDERS: Borders = Borders {
     vertical: "│",
 };
 
-static LOGGER: OnceLock<Logger> = OnceLock::new();
+pub static LOGGER: OnceLock<Logger> = OnceLock::new();
+pub static DEBUG: OnceLock<bool> = OnceLock::new();
 
 pub fn init_logger<P: Into<PathBuf>>(path: P) -> std::io::Result<()> {
     let logger = Logger::new(path)?;
     LOGGER.set(logger).unwrap_or(());
     Ok(())
+}
+
+/// Debug is enabled by default
+pub fn set_debug(debug: bool) {
+    DEBUG.set(debug).unwrap_or(());
 }
 
 #[inline]
@@ -174,7 +181,7 @@ pub fn create_box(title: &str, message: &str, width: usize) -> String {
 }
 
 #[allow(dead_code)]
-fn strip_ansi_codes(s: &str) -> String {
+pub fn strip_ansi_codes(s: &str) -> String {
     let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
     re.replace_all(s, "").to_string()
 }
@@ -195,7 +202,7 @@ macro_rules! info_box {
             $title,
             $($arg)*
         );
-        
+
         if let Some(logger) = $crate::LOGGER.get() {
             let clean_log = $crate::strip_ansi_codes(&log);
             if let Err(e) = logger.log(&clean_log) {
@@ -221,7 +228,7 @@ macro_rules! warn_box {
             $title,
             $($arg)*
         );
-        
+
         if let Some(logger) = $crate::LOGGER.get() {
             let clean_log = $crate::strip_ansi_codes(&log);
             if let Err(e) = logger.log(&clean_log) {
@@ -247,7 +254,7 @@ macro_rules! error_box {
             $title,
             $($arg)*
         );
-        
+
         if let Some(logger) = $crate::LOGGER.get() {
             let clean_log = $crate::strip_ansi_codes(&log);
             if let Err(e) = logger.log(&clean_log) {
@@ -273,7 +280,7 @@ macro_rules! success_box {
             $title,
             $($arg)*
         );
-        
+
         if let Some(logger) = $crate::LOGGER.get() {
             let clean_log = $crate::strip_ansi_codes(&log);
             if let Err(e) = logger.log(&clean_log) {
@@ -286,20 +293,23 @@ macro_rules! success_box {
 #[macro_export]
 macro_rules! debug_box {
     ($title:expr, $($arg:tt)*) => {
-        print!("{}", $crate::create_styled_box(
-            $crate::COLORS.debug,
-            $crate::SYMBOLS.debug,
-            $title,
-            &format!($($arg)*),
-            75
-        ));
+        if *$crate::DEBUG.get().unwrap_or(&true) {
+            print!("{}", $crate::create_styled_box(
+                $crate::COLORS.debug,
+                $crate::SYMBOLS.debug,
+                $title,
+                &format!($($arg)*),
+                75
+            ));
+        }
+        
         let log = make_log!(
             $crate::COLORS.debug,
             $crate::SYMBOLS.debug,
             $title,
             $($arg)*
         );
-        
+
         if let Some(logger) = $crate::LOGGER.get() {
             let clean_log = $crate::strip_ansi_codes(&log);
             if let Err(e) = logger.log(&clean_log) {
@@ -420,7 +430,9 @@ macro_rules! debug {
             $title,
             $($arg)*
         );
-        println!("{msg}");
+        if *$crate::DEBUG.get().unwrap_or(&true) {
+            println!("{msg}");
+        }
 
         if let Some(logger) = $crate::LOGGER.get() {
             let clean_log = $crate::strip_ansi_codes(&msg);

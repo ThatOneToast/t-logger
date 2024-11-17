@@ -203,14 +203,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "t-logger"
+name = "t_logger"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "proc-macro2",
- "quote",
  "regex",
- "syn",
 ]
 
 [[package]]

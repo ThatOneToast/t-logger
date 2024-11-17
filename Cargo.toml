@@ -1,12 +1,12 @@
 [package]
-name = "t-logger"
+name = "t_logger"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "t_logger"
+path = "src/lib.rs"
 
 [dependencies]
 chrono = "0.4.38"
-proc-macro2 = "1.0.89"
-quote = "1.0.37"
 regex = "1.11.1"
-syn = { version = "2.0.87", features = ["full"] }
