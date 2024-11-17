@@ -107,9 +107,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ```
 
 Box Style Output:
-
+```
 ╭─✔Login─────────────────────────────────────────────────────⏳ 12:29:47╮
 │ User Alice connected                                                    │
 ╰─────────────────────────────────────────────────────────────────────────╯
-
+```
 ---
