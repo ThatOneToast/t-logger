@@ -9,12 +9,12 @@ pub mod styling;
 mod tests;
 
 /// No log saving is used by default
-/// 
+///
 /// This is the global logger, if enabled
 /// all logs will be written into a daily log file at the provided path
 pub static LOGGER: OnceLock<Logger> = OnceLock::new();
 /// DEBUG is enabled by default
-/// 
+///
 /// If you are ready to ship to production, setting this to false will prevent debug messages from being printed
 /// to the console, but will still be logged to a log file.
 pub static DEBUG: OnceLock<bool> = OnceLock::new();
@@ -32,7 +32,7 @@ pub fn init_logger<P: Into<PathBuf>>(path: P) -> std::io::Result<()> {
 }
 
 /// Converts RGB values to an ANSI escape code
-/// 
+///
 /// # Example
 /// ```rust
 /// let red = rgb_to_ansi(255, 0, 0);       // "\x1b[38;2;255;0;0m"
@@ -45,7 +45,7 @@ pub fn rgb_to_ansi(r: u8, g: u8, b: u8) -> String {
 }
 
 /// Converts RGB values to an ANSI background color escape code
-/// 
+///
 /// # Example
 /// ```rust
 /// let red = rgb_to_ansi_bg(255, 0, 0);       // "\x1b[48;2;255;0;0m"
@@ -58,12 +58,12 @@ pub fn rgb_to_ansi_bg(r: u8, g: u8, b: u8) -> String {
 }
 
 /// Creates an ANSI escape code for RGB colors
-/// 
+///
 /// # Returns
 /// This returns a static string slice.
-/// 
+///
 /// If you need just a normal string, see `rgb_to_ansi`
-/// 
+///
 /// # Example
 /// ```rust
 /// println!("{}Colored text{}", ansi_rgb!(255, 0, 0), get_colors().reset);
@@ -76,12 +76,12 @@ macro_rules! ansi_rgb {
 }
 
 /// Creates an ANSI background color escape code
-/// 
+///
 /// # Returns
 /// This returns a static string slice.
-/// 
+///
 /// If you need just a normal string, see `rgb_to_ansi_bg`
-/// 
+///
 /// # Example
 /// ```rust
 /// println!("{}Colored text{}", ansi_bg_rgb!(255, 0, 0), get_colors().reset);
@@ -109,12 +109,12 @@ pub fn get_timestamp() -> String {
 }
 
 /// Set your own colors for formatting
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust
 /// use t_logger::prelude::*;
-/// 
+///
 /// customize_colors(Colors {
 ///     info: "\x1b[96m",    // Cyan
 ///     warn: "\x1b[93m",    // Yellow
@@ -130,12 +130,12 @@ pub fn customize_colors(colors: Colors) {
 }
 
 /// Set your own symbols for formatting
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust
 /// use t_logger::prelude::*;
-/// 
+///
 /// customize_symbols(Symbols {
 ///     info: "i",
 ///     warn: "[WARN]",
@@ -149,12 +149,12 @@ pub fn customize_symbols(symbols: Symbols) {
 }
 
 /// Set your own border characters for formatting
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust
 /// use t_logger::prelude::*;
-/// 
+///
 /// customize_borders(Borders {
 ///     top_left: "╭",
 ///     top_right: "╮",
@@ -195,31 +195,7 @@ pub fn create_styled_box(
     message: &str,
     width: usize,
 ) -> String {
-    fn wrap_text(text: &str, width: usize) -> String {
-        let mut wrapped = String::new();
-        let mut line_length = 0;
-        let mut first_word = true;
-
-        for word in text.split_whitespace() {
-            let word_length = word.len();
-            if line_length + word_length + (!first_word as usize) > width - 4 {
-                wrapped.push('\n');
-                line_length = 0;
-                first_word = true;
-            }
-            if !first_word {
-                wrapped.push(' ');
-                line_length += 1;
-            }
-            wrapped.push_str(word);
-            line_length += word_length;
-            first_word = false;
-        }
-        wrapped
-    }
-
-    let wrapped_message = wrap_text(message, width);
-    let message_lines: Vec<&str> = wrapped_message.lines().collect();
+    let message_lines: Vec<&str> = message.lines().collect();
     let mut result = String::new();
 
     // Get timestamp
@@ -227,7 +203,7 @@ pub fn create_styled_box(
     let timestamp_display = format!("⏳ {}", timestamp);
 
     // Calculate spaces needed between title and timestamp
-    let total_space = width - title.len() - timestamp_display.len() - symbol.len() - 1; // Adjusted for symbol and corners
+    let total_space = width - title.len() - timestamp_display.len() - symbol.len() - 1;
 
     // Top border with symbol, title and timestamp
     result.push_str(&format!(
@@ -246,16 +222,18 @@ pub fn create_styled_box(
         get_borders().top_right
     ));
 
-    // Message lines
+    // Message lines - preserve original formatting and add padding
     for line in message_lines {
+        let clean_line = strip_ansi_codes(line);
+        let padding = width - clean_line.len() - 4; // 4 accounts for the border and spacing
         result.push_str(&format!(
-            "{}{} {:<width$} {}{}\n",
+            "{}{} {} {}{}{}\n",
             color,
             get_borders().vertical,
             line,
+            " ".repeat(padding),
             get_borders().vertical,
             get_colors().reset,
-            width = width - 4
         ));
     }
 
@@ -271,7 +249,6 @@ pub fn create_styled_box(
 
     result
 }
-
 
 /// Strips ANSI escape codes from a string
 pub fn strip_ansi_codes(s: &str) -> String {
@@ -400,7 +377,7 @@ macro_rules! debug_box {
                 75
             ));
         }
-        
+
         let log = make_log!(
             $crate::get_colors().debug,
             $crate::get_symbols().debug,
