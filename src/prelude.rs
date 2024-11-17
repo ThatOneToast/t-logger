@@ -12,5 +12,12 @@ pub use crate::{
     strip_ansi_codes,
     debug_box,
     init_logger,
-    set_debug
+    set_debug,
+    customize_colors,
+    customize_borders,
+    customize_symbols,
+    get_colors,
+    get_borders,
+    get_symbols,
+    
 };

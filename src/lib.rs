@@ -5,41 +5,18 @@ use styling::*;
 
 pub mod logger;
 pub mod prelude;
-mod styling;
+pub mod styling;
 mod tests;
 
-/// Default configurations
-pub const COLORS: Colors = Colors {
-    info: "\x1b[96m",    // Cyan
-    warn: "\x1b[93m",    // Yellow
-    error: "\x1b[91m",   // Red
-    success: "\x1b[92m", // Green
-    debug: "\x1b[95m",   // Magenta
-    dim: "\x1b[2m",      // Dimmed
-    bold: "\x1b[1m",     // Bold
-    reset: "\x1b[0m",    // Reset
-};
-
-pub const SYMBOLS: Symbols = Symbols {
-    info: "ℹ",
-    warn: "⚠",
-    error: "✖",
-    success: "✔",
-    debug: "⁂",
-    separator: "│",
-    bullet: "•",
-};
-
-pub const BORDERS: Borders = Borders {
-    top_left: "╭",
-    top_right: "╮",
-    bottom_left: "╰",
-    bottom_right: "╯",
-    horizontal: "─",
-    vertical: "│",
-};
-
+/// No log saving is used by default
+/// 
+/// This is the global logger, if enabled
+/// all logs will be written into a daily log file at the provided path
 pub static LOGGER: OnceLock<Logger> = OnceLock::new();
+/// DEBUG is enabled by default
+/// 
+/// If you are ready to ship to production, setting this to false will prevent debug messages from being printed
+/// to the console, but will still be logged to a log file.
 pub static DEBUG: OnceLock<bool> = OnceLock::new();
 
 /// Initializes the logger
@@ -47,25 +24,170 @@ pub static DEBUG: OnceLock<bool> = OnceLock::new();
 /// Logs are generated based on the current day.
 /// All logs are stored in the directory specified by `path`.
 /// With the name format of `YYYY-MM-DD.log`.
+#[inline]
 pub fn init_logger<P: Into<PathBuf>>(path: P) -> std::io::Result<()> {
     let logger = Logger::new(path)?;
     LOGGER.set(logger).unwrap_or(());
     Ok(())
 }
 
+/// Converts RGB values to an ANSI escape code
+/// 
+/// # Example
+/// ```rust
+/// let red = rgb_to_ansi(255, 0, 0);       // "\x1b[38;2;255;0;0m"
+/// let blue = rgb_to_ansi(0, 0, 255);      // "\x1b[38;2;0;0;255m"
+/// let white = rgb_to_ansi(255, 255, 255); // "\x1b[38;2;255;255;255m"
+/// ```
+#[inline]
+pub fn rgb_to_ansi(r: u8, g: u8, b: u8) -> String {
+    format!("\x1b[38;2;{};{};{}m", r, g, b)
+}
+
+/// Converts RGB values to an ANSI background color escape code
+/// 
+/// # Example
+/// ```rust
+/// let red = rgb_to_ansi_bg(255, 0, 0);       // "\x1b[48;2;255;0;0m"
+/// let blue = rgb_to_ansi_bg(0, 0, 255);      // "\x1b[48;2;0;0;255m"
+/// let white = rgb_to_ansi_bg(255, 255, 255); // "\x1b[48;2;255;255;255m"
+/// ```
+#[inline]
+pub fn rgb_to_ansi_bg(r: u8, g: u8, b: u8) -> String {
+    format!("\x1b[48;2;{};{};{}m", r, g, b)
+}
+
+/// Creates an ANSI escape code for RGB colors
+/// 
+/// # Returns
+/// This returns a static string slice.
+/// 
+/// If you need just a normal string, see `rgb_to_ansi`
+/// 
+/// # Example
+/// ```rust
+/// println!("{}Colored text{}", ansi_rgb!(255, 0, 0), get_colors().reset);
+/// ```
+#[macro_export]
+macro_rules! ansi_rgb {
+    ($r:expr, $g:expr, $b:expr) => {
+        concat!("\x1b[38;2;", $r, ";", $g, ";", $b, "m")
+    };
+}
+
+/// Creates an ANSI background color escape code
+/// 
+/// # Returns
+/// This returns a static string slice.
+/// 
+/// If you need just a normal string, see `rgb_to_ansi_bg`
+/// 
+/// # Example
+/// ```rust
+/// println!("{}Colored text{}", ansi_bg_rgb!(255, 0, 0), get_colors().reset);
+/// ```
+#[macro_export]
+macro_rules! ansi_rgb_bg {
+    ($r:expr, $g:expr, $b:expr) => {
+        concat!("\x1b[48;2;", $r, ";", $g, ";", $b, "m")
+    };
+}
+
 /// Debug is enabled by default
 ///
 /// If set to false all `debug` macros will not be printed to the console, but will
 /// still be logged to the log file.
+#[inline]
 pub fn set_debug(debug: bool) {
     DEBUG.set(debug).unwrap_or(());
 }
 
+/// Get the current timestamp in the format HH:MM:SS.SSS
 #[inline]
 pub fn get_timestamp() -> String {
     chrono::Local::now().format("%H:%M:%S%.3f").to_string()
 }
 
+/// Set your own colors for formatting
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use t_logger::prelude::*;
+/// 
+/// customize_colors(Colors {
+///     info: "\x1b[96m",    // Cyan
+///     warn: "\x1b[93m",    // Yellow
+///     error: "\x1b[91m",   // Red
+///     success: "\x1b[92m", // Green
+///     debug: "\x1b[95m",   // Magenta
+///     ..Default::default()
+/// });
+/// ```
+#[inline]
+pub fn customize_colors(colors: Colors) {
+    _ = COLORS.set(colors);
+}
+
+/// Set your own symbols for formatting
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use t_logger::prelude::*;
+/// 
+/// customize_symbols(Symbols {
+///     info: "i",
+///     warn: "[WARN]",
+///     error: "[ERROR]",
+///     ..Default::default()
+/// });
+/// ```
+#[inline]
+pub fn customize_symbols(symbols: Symbols) {
+    _ = SYMBOLS.set(symbols);
+}
+
+/// Set your own border characters for formatting
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use t_logger::prelude::*;
+/// 
+/// customize_borders(Borders {
+///     top_left: "╭",
+///     top_right: "╮",
+///     bottom_left: "╰",
+///     bottom_right: "╯",
+///     horizontal: "─",
+///     vertical: "│",
+/// });
+/// ```
+#[inline]
+pub fn customize_borders(borders: Borders) {
+    _ = BORDERS.set(borders);
+}
+
+/// Get the current colors
+#[inline]
+pub fn get_colors() -> &'static Colors {
+    COLORS.get_or_init(|| Colors::default())
+}
+
+/// Get the current symbols
+#[inline]
+pub fn get_symbols() -> &'static Symbols {
+    SYMBOLS.get_or_init(|| Symbols::default())
+}
+
+/// Get the current border characters
+#[inline]
+pub fn get_borders() -> &'static Borders {
+    BORDERS.get_or_init(|| Borders::default())
+}
+
+/// Creates a perfectly formatted box with the given title and message
 pub fn create_styled_box(
     color: &str,
     symbol: &str,
@@ -111,17 +233,17 @@ pub fn create_styled_box(
     result.push_str(&format!(
         "{}{}{}─{} {}{}{}{}{}{}{}{}\n",
         color,
-        BORDERS.top_left,
-        COLORS.bold,
+        get_borders().top_left,
+        get_colors().bold,
         symbol,
         title,
         color,
-        BORDERS.horizontal.repeat(total_space),
-        COLORS.dim,
+        get_borders().horizontal.repeat(total_space),
+        get_colors().dim,
         timestamp_display,
-        COLORS.reset,
+        get_colors().reset,
         color,
-        BORDERS.top_right
+        get_borders().top_right
     ));
 
     // Message lines
@@ -129,10 +251,10 @@ pub fn create_styled_box(
         result.push_str(&format!(
             "{}{} {:<width$} {}{}\n",
             color,
-            BORDERS.vertical,
+            get_borders().vertical,
             line,
-            BORDERS.vertical,
-            COLORS.reset,
+            get_borders().vertical,
+            get_colors().reset,
             width = width - 4
         ));
     }
@@ -141,72 +263,36 @@ pub fn create_styled_box(
     result.push_str(&format!(
         "{}{}{}{}{}\n",
         color,
-        BORDERS.bottom_left,
-        BORDERS.horizontal.repeat(width - 2),
-        BORDERS.bottom_right,
-        COLORS.reset
+        get_borders().bottom_left,
+        get_borders().horizontal.repeat(width - 2),
+        get_borders().bottom_right,
+        get_colors().reset
     ));
 
     result
 }
 
-pub fn create_box(title: &str, message: &str, width: usize) -> String {
-    let mut result = String::new();
-    let message_lines: Vec<&str> = message.lines().collect();
-    let max_width = width.max(message_lines.iter().map(|l| l.len()).max().unwrap_or(0) + 2);
 
-    // Top border with title
-    result.push_str(&format!("{}{}", BORDERS.top_left, BORDERS.horizontal));
-    result.push_str(title);
-    result.push_str(BORDERS.horizontal);
-    let remaining_width = max_width - title.len() - 1;
-    result.push_str(&format!(
-        "{}{}\n",
-        BORDERS.horizontal.repeat(remaining_width),
-        BORDERS.top_right
-    ));
-
-    // Message lines
-    for line in message_lines {
-        result.push_str(&format!(
-            "{} {:<width$} {}\n",
-            BORDERS.vertical,
-            line,
-            BORDERS.vertical,
-            width = max_width - 2
-        ));
-    }
-
-    // Bottom border
-    result.push_str(&format!(
-        "{}{}{}\n",
-        BORDERS.bottom_left,
-        BORDERS.horizontal.repeat(max_width),
-        BORDERS.bottom_right
-    ));
-
-    result
-}
-
-#[allow(dead_code)]
+/// Strips ANSI escape codes from a string
 pub fn strip_ansi_codes(s: &str) -> String {
     let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
     re.replace_all(s, "").to_string()
 }
 
+/// Creates a Cyan box with the given title and message
 #[macro_export]
 macro_rules! info_box {
     ($title:expr, $($arg:tt)*) => {
         print!("{}", $crate::create_styled_box(
-            $crate::COLORS.info,
-            $crate::SYMBOLS.info,
+            $crate::get_colors().info,
+            $crate::get_symbols().info,
             $title,
             &format!($($arg)*),
             75
         ));
         let log = make_log!(
-            $crate::COLORS.debug,
-            $crate::SYMBOLS.debug,
+            $crate::get_colors().debug,
+            $crate::get_symbols().debug,
             $title,
             $($arg)*
         );
@@ -220,19 +306,20 @@ macro_rules! info_box {
     };
 }
 
+/// Creates a Yellow box with the given title and message
 #[macro_export]
 macro_rules! warn_box {
     ($title:expr, $($arg:tt)*) => {
         print!("{}", $crate::create_styled_box(
-            $crate::COLORS.warn,
-            $crate::SYMBOLS.warn,
+            $crate::get_colors().warn,
+            $crate::get_symbols().warn,
             $title,
             &format!($($arg)*),
             75
         ));
         let log = make_log!(
-            $crate::COLORS.debug,
-            $crate::SYMBOLS.debug,
+            $crate::get_colors().debug,
+            $crate::get_symbols().debug,
             $title,
             $($arg)*
         );
@@ -246,19 +333,20 @@ macro_rules! warn_box {
     };
 }
 
+/// Creates a Red box with the given title and message
 #[macro_export]
 macro_rules! error_box {
     ($title:expr, $($arg:tt)*) => {
         eprint!("{}", $crate::create_styled_box(
-            $crate::COLORS.error,
-            $crate::SYMBOLS.error,
+            $crate::get_colors().error,
+            $crate::get_symbols().error,
             $title,
             &format!($($arg)*),
             75
         ));
         let log = make_log!(
-            $crate::COLORS.debug,
-            $crate::SYMBOLS.debug,
+            $crate::get_colors().debug,
+            $crate::get_symbols().debug,
             $title,
             $($arg)*
         );
@@ -272,19 +360,20 @@ macro_rules! error_box {
     };
 }
 
+/// Creates a Green box with the given title and message
 #[macro_export]
 macro_rules! success_box {
     ($title:expr, $($arg:tt)*) => {
         print!("{}", $crate::create_styled_box(
-            $crate::COLORS.success,
-            $crate::SYMBOLS.success,
+            $crate::get_colors().success,
+            $crate::get_symbols().success,
             $title,
             &format!($($arg)*),
             75
         ));
         let log = make_log!(
-            $crate::COLORS.debug,
-            $crate::SYMBOLS.debug,
+            $crate::get_colors().debug,
+            $crate::get_symbols().debug,
             $title,
             $($arg)*
         );
@@ -298,13 +387,14 @@ macro_rules! success_box {
     };
 }
 
+/// Creates a Magenta box with the given title and message
 #[macro_export]
 macro_rules! debug_box {
     ($title:expr, $($arg:tt)*) => {
         if *$crate::DEBUG.get().unwrap_or(&true) {
             print!("{}", $crate::create_styled_box(
-                $crate::COLORS.debug,
-                $crate::SYMBOLS.debug,
+                $crate::get_colors().debug,
+                $crate::get_symbols().debug,
                 $title,
                 &format!($($arg)*),
                 75
@@ -312,8 +402,8 @@ macro_rules! debug_box {
         }
         
         let log = make_log!(
-            $crate::COLORS.debug,
-            $crate::SYMBOLS.debug,
+            $crate::get_colors().debug,
+            $crate::get_symbols().debug,
             $title,
             $($arg)*
         );
@@ -327,6 +417,7 @@ macro_rules! debug_box {
     };
 }
 
+/// Creates a log message with the given title, symbol, and message
 #[macro_export]
 macro_rules! make_log {
     ($color:expr, $symbol:expr, $title:expr, $($arg:tt)*) => {{
@@ -334,27 +425,28 @@ macro_rules! make_log {
             "{}{} {} {}{}{}{} {} {}{}{}{} {}",
             $color,
             $symbol,
-            $crate::COLORS.reset,
-            $crate::COLORS.dim,
+            $crate::get_colors().reset,
+            $crate::get_colors().dim,
             $crate::get_timestamp(),
-            $crate::COLORS.reset,
-            $crate::COLORS.dim,
-            $crate::SYMBOLS.separator,
-            $crate::COLORS.reset,
-            $crate::COLORS.bold,
+            $crate::get_colors().reset,
+            $crate::get_colors().dim,
+            $crate::get_symbols().separator,
+            $crate::get_colors().reset,
+            $crate::get_colors().bold,
             $title,
-            $crate::COLORS.reset,
+            $crate::get_colors().reset,
             format!($($arg)*)
         )
     }};
 }
 
+/// Creates a single line message with a symbol timestamp, title, and message
 #[macro_export]
 macro_rules! info {
     ($title:expr, $($arg:tt)*) => {{
         let msg = make_log!(
-            $crate::COLORS.info,
-            $crate::SYMBOLS.info,
+            $crate::get_colors().info,
+            $crate::get_symbols().info,
             $title,
             $($arg)*
         );
@@ -369,12 +461,13 @@ macro_rules! info {
     }};
 }
 
+/// Creates a single line message with a symbol timestamp, title, and message
 #[macro_export]
 macro_rules! warn {
     ($title:expr, $($arg:tt)*) => {{
         let msg = make_log!(
-            $crate::COLORS.warn,
-            $crate::SYMBOLS.warn,
+            $crate::get_colors().warn,
+            $crate::get_symbols().warn,
             $title,
             $($arg)*
         );
@@ -388,13 +481,13 @@ macro_rules! warn {
         }
     }};
 }
-
+/// Creates a single line message with a symbol timestamp, title, and message
 #[macro_export]
 macro_rules! error {
     ($title:expr, $($arg:tt)*) => {{
         let msg = make_log!(
-            $crate::COLORS.error,
-            $crate::SYMBOLS.error,
+            $crate::get_colors().error,
+            $crate::get_symbols().error,
             $title,
             $($arg)*
         );
@@ -408,13 +501,13 @@ macro_rules! error {
         }
     }};
 }
-
+/// Creates a single line message with a symbol timestamp, title, and message
 #[macro_export]
 macro_rules! success {
     ($title:expr, $($arg:tt)*) => {{
         let msg = make_log!(
-            $crate::COLORS.success,
-            $crate::SYMBOLS.success,
+            $crate::get_colors().success,
+            $crate::get_symbols().success,
             $title,
             $($arg)*
         );
@@ -429,12 +522,13 @@ macro_rules! success {
     }};
 }
 
+/// Creates a single line message with a symbol timestamp, title, and message
 #[macro_export]
 macro_rules! debug {
     ($title:expr, $($arg:tt)*) => {{
         let msg = make_log!(
-            $crate::COLORS.debug,
-            $crate::SYMBOLS.debug,
+            $crate::get_colors().debug,
+            $crate::get_symbols().debug,
             $title,
             $($arg)*
         );
