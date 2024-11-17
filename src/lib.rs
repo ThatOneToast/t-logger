@@ -42,6 +42,11 @@ pub const BORDERS: Borders = Borders {
 pub static LOGGER: OnceLock<Logger> = OnceLock::new();
 pub static DEBUG: OnceLock<bool> = OnceLock::new();
 
+/// Initializes the logger
+///
+/// Logs are generated based on the current day.
+/// All logs are stored in the directory specified by `path`.
+/// With the name format of `YYYY-MM-DD.log`.
 pub fn init_logger<P: Into<PathBuf>>(path: P) -> std::io::Result<()> {
     let logger = Logger::new(path)?;
     LOGGER.set(logger).unwrap_or(());
@@ -49,6 +54,9 @@ pub fn init_logger<P: Into<PathBuf>>(path: P) -> std::io::Result<()> {
 }
 
 /// Debug is enabled by default
+///
+/// If set to false all `debug` macros will not be printed to the console, but will
+/// still be logged to the log file.
 pub fn set_debug(debug: bool) {
     DEBUG.set(debug).unwrap_or(());
 }

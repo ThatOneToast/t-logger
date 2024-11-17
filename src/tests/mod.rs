@@ -3,7 +3,7 @@
 pub fn info() {
     use super::*;
     
-    init_logger("Logs").unwrap();
+    // init_logger("Logs").unwrap();
 
     info!("System", "Starting");
     success!("Login", "User {} connected", "Alice");
