@@ -249,7 +249,7 @@ macro_rules! warn_box {
 #[macro_export]
 macro_rules! error_box {
     ($title:expr, $($arg:tt)*) => {
-        print!("{}", $crate::create_styled_box(
+        eprint!("{}", $crate::create_styled_box(
             $crate::COLORS.error,
             $crate::SYMBOLS.error,
             $title,
@@ -398,7 +398,7 @@ macro_rules! error {
             $title,
             $($arg)*
         );
-        println!("{msg}");
+        eprintln!("{msg}");
 
         if let Some(logger) = $crate::LOGGER.get() {
             let clean_log = $crate::strip_ansi_codes(&msg);
