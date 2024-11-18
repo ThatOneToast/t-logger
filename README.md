@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tlogger = "0.1.3"
+tlogger = "0.1.4"
 ```
 
 Or use the `cargo add` command:
@@ -104,25 +104,30 @@ customize_colors(Colors {
 
 ### Text Styling
 You can style your text using simple markdown-like syntax:
-- `_text_` for underlined text
-- `*text*` for italic text
 - `**text**` for bold text
+- `*text*` for italic text
+- `_text_` for underlined text
+- `~text~` for strikethrough text
+- `@text@` for dimmed text
 
 These styles can be nested and combined:
 ```rust
 // Single styles
-info!("Server", "This text is _underlined_");
-info!("Server", "This text is *italic*");
 info!("Server", "This text is **bold**");
+info!("Server", "This text is *italic*");
+info!("Server", "This text is _underlined_");
+info!("Server", "This text is ~strikethrough~");
+info!("Server", "This text is @dimmed@");
 
 // Combined styles
 info!("Server", "This is *italic with _underlined_ text*");
 info!("Server", "This is **bold with *italic* inside**");
-info!("Server", "You can **_combine_** *all _the_ **styles***");
+info!("Server", "You can mix **bold** with @dimmed@ and ~strikethrough~");
 
 // Works in box style too
 info_box!("Server", "All _styling_ **works** in *boxes* too!");
 ```
+
 
 ### Custom Styling
 If you need to style text programmatically, you can use the `style_text!` macro:

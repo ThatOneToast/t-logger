@@ -2,6 +2,7 @@ use std::sync::OnceLock;
 
 /// Colors using ANSI escape codes
 pub struct Colors {
+    // Logging colors
     pub info: &'static str,
     pub info_text: &'static str,
     pub warn: &'static str,
@@ -12,10 +13,14 @@ pub struct Colors {
     pub success_text: &'static str,
     pub debug: &'static str,
     pub debug_text: &'static str,
+
+    // Text styling
     pub dim: &'static str,
     pub bold: &'static str,
+    pub italic: &'static str,
+    pub underline: &'static str,
+    pub strikethrough: &'static str,
     pub reset: &'static str,
-    pub underline: &'static str,     // Underline
 }
 
 /// Symbols used in logging
@@ -42,6 +47,7 @@ pub struct Borders {
 impl Default for Colors {
     fn default() -> Self {
         Self {
+            // Logging colors
             info: "\x1b[96m",         // Bright Cyan
             info_text: "\x1b[36m",    // Dark Cyan
             warn: "\x1b[93m",         // Bright Yellow
@@ -52,10 +58,14 @@ impl Default for Colors {
             success_text: "\x1b[32m", // Dark Green
             debug: "\x1b[95m",        // Bright Magenta
             debug_text: "\x1b[35m",   // Dark Magenta
+
+            // Text styling
             dim: "\x1b[2m",           // Dimmed
             bold: "\x1b[1m",          // Bold
-            reset: "\x1b[0m",         // Reset
-            underline: "\x1b[4m"      // Underline
+            italic: "\x1b[3m",        // Italic
+            underline: "\x1b[4m",     // Underline
+            strikethrough: "\x1b[9m", // Strikethrough
+            reset: "\x1b[0m",         // Reset all
         }
     }
 }

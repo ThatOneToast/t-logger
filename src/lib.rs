@@ -438,7 +438,7 @@ macro_rules! style_text {
         let text = $text.to_string();
         let mut result = text.clone();
 
-        // Handle bold (must be processed first as it uses double asterisks)
+        // Bold (process first as it uses double markers)
         while let Some(start) = result.find("**") {
             if let Some(end) = result[start + 2..].find("**") {
                 let before = &result[..start];
@@ -450,33 +450,31 @@ macro_rules! style_text {
             }
         }
 
-        // Handle italic
-        while let Some(start) = result.find('*') {
-            if let Some(end) = result[start + 1..].find('*') {
-                let before = &result[..start];
-                let content = &result[start + 1..start + 1 + end];
-                let after = &result[start + 1 + end + 1..];
-                result = format!("{}{}\x1b[3m{}\x1b[23m{}", before, $color, content, after);
-            } else {
-                break;
+        // Process other styles
+        let styles = [
+            ("*", "\x1b[3m", "\x1b[23m"), // Italic
+            ("_", "\x1b[4m", "\x1b[24m"), // Underline
+            ("~", "\x1b[9m", "\x1b[29m"), // Strikethrough
+            ("@", "\x1b[2m", "\x1b[22m"), // Dim
+        ];
+
+        for (marker, start_code, end_code) in styles {
+            while let Some(start) = result.find(marker) {
+                if let Some(end) = result[start + 1..].find(marker) {
+                    let before = &result[..start];
+                    let content = &result[start + 1..start + 1 + end];
+                    let after = &result[start + 1 + end + 1..];
+                    result = format!(
+                        "{}{}{}{}{}{}",
+                        before, $color, start_code, content, end_code, after
+                    );
+                } else {
+                    break;
+                }
             }
         }
 
-        // Handle underline
-        while let Some(start) = result.find('_') {
-            if let Some(end) = result[start + 1..].find('_') {
-                let before = &result[..start];
-                let content = &result[start + 1..start + 1 + end];
-                let after = &result[start + 1 + end + 1..];
-                result = format!("{}{}\x1b[4m{}\x1b[24m{}", before, $color, content, after);
-            } else {
-                break;
-            }
-        }
-
-        // Ensure the color is applied to any remaining text
-        result = format!("{}{}", $color, result);
-        result
+        format!("{}{}{}", $color, result, get_colors().reset)
     }};
 }
 
