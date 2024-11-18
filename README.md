@@ -85,6 +85,51 @@ Configure how frequently new log files are created:
 - `LogInterval::TwelveHour` - Every 12 hours (e.g., `2024-02-20-12h-00h.log`)
 - `LogInterval::OneDay` - One file per day (e.g., `2024-02-20-00h-24h.log`)
 
+## Styling Options
+
+### Colors
+Change the colors your logs use.
+All log types `(info, warn, error, success, debug)` will change the color of boxes in box style outputs,
+or will change the title of single line outputs. The log types with `_text` suffix (e.g., `info_text`) will change all message text.
+
+```rust
+use tlogger::prelude::*;
+
+customize_colors(Colors {
+    info: ansi_rgb!(32, 80, 123),
+    info_text: ansi_rgb!(60, 200, 30),
+    ..Default::default()
+});
+```
+
+### Text Styling
+You can style your text using simple markdown-like syntax:
+- `_text_` for underlined text
+- `*text*` for italic text
+- `**text**` for bold text
+
+These styles can be nested and combined:
+```rust
+// Single styles
+info!("Server", "This text is _underlined_");
+info!("Server", "This text is *italic*");
+info!("Server", "This text is **bold**");
+
+// Combined styles
+info!("Server", "This is *italic with _underlined_ text*");
+info!("Server", "This is **bold with *italic* inside**");
+info!("Server", "You can **_combine_** *all _the_ **styles***");
+
+// Works in box style too
+info_box!("Server", "All _styling_ **works** in *boxes* too!");
+```
+
+### Custom Styling
+If you need to style text programmatically, you can use the `style_text!` macro:
+```rust
+let styled_text = style_text!("This is **bold** and *italic*", colors.info_text);
+```
+
 ## Debug Mode
 
 Debug messages can be disabled in production while still being logged to file:

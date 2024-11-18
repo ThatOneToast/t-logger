@@ -15,6 +15,7 @@ pub struct Colors {
     pub dim: &'static str,
     pub bold: &'static str,
     pub reset: &'static str,
+    pub underline: &'static str,     // Underline
 }
 
 /// Symbols used in logging
@@ -54,6 +55,7 @@ impl Default for Colors {
             dim: "\x1b[2m",           // Dimmed
             bold: "\x1b[1m",          // Bold
             reset: "\x1b[0m",         // Reset
+            underline: "\x1b[4m"      // Underline
         }
     }
 }

@@ -22,14 +22,14 @@ pub fn info() {
     // });
     
     info!("Server", "Starting");
-    success!("Login", "User {} connected", "Alice");
+    success!("Login", "User _{}_ connected", "Alice");
     debug!("Processing", "Items in queue: {}", 42);
     warn!("Memory", "Usage at {}%", 85);
-    error!("Database", "Connection failed");
+    error!("Database", "* **Connection _failed_***");
 
-    info_box!("System", "Your super secure super system is starting up.");
-    warn_box!("Memory", "Memory usage is at {}%", 85);
+    info_box!("System", "**Your _super secure super system_ is starting up.**");
+    warn_box!("Memory", "Memory usage is at **{}%**", 85);
     error_box!("Database", "Database connection failed");
     success_box!("Login", "User {} connected", "Alice");
-    debug_box!("Processing", "Items in queue: {}", 42);
+    debug_box!("Processing", "*_Items in queue:_* **{}**", 42);
 }

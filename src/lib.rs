@@ -226,16 +226,17 @@ pub fn create_styled_box(
 
     // Message lines - preserve original formatting and add padding
     for line in message_lines {
-        let clean_line = strip_ansi_codes(line);
-        let padding = width - clean_line.len() - 4; // 4 accounts for the border and spacing
+        let processed_line = style_text!(line, text_color);
+        let clean_processed = strip_ansi_codes(&processed_line);
+        let padding = width - clean_processed.len() - 3; // Adjusted padding by 1
+
         result.push_str(&format!(
-            "{}{} {}{}{}{} {}{}{}\n",
+            "{}{} {}{}{}{}{}{}\n",
             box_color,
             get_borders().vertical,
-            text_color,
-            line,
+            processed_line,
             get_colors().reset,
-            box_color,
+            box_color, // Reset to box color before padding and border
             " ".repeat(padding),
             get_borders().vertical,
             get_colors().reset,
@@ -408,8 +409,11 @@ macro_rules! debug_box {
 #[macro_export]
 macro_rules! make_log {
     ($color:expr, $symbol:expr, $title:expr, $textcolor:expr, $($arg:tt)*) => {{
+        let message = format!($($arg)*);
+        let processed_message = style_text!(message, $textcolor);
+
         format!(
-            "{}{} {} {}{}{}{} {} {}{}{}{}{} {}{}",
+            "{}{} {} {}{}{}{} {} {}{}{}{}{} {}",
             $color,
             $symbol,
             $crate::get_colors().reset,
@@ -423,9 +427,56 @@ macro_rules! make_log {
             $color,
             $title,
             $crate::get_colors().reset,
-            $textcolor,
-            format!($($arg)*)
+            processed_message
         )
+    }};
+}
+
+#[macro_export]
+macro_rules! style_text {
+    ($text:expr, $color:expr) => {{
+        let text = $text.to_string();
+        let mut result = text.clone();
+
+        // Handle bold (must be processed first as it uses double asterisks)
+        while let Some(start) = result.find("**") {
+            if let Some(end) = result[start + 2..].find("**") {
+                let before = &result[..start];
+                let content = &result[start + 2..start + 2 + end];
+                let after = &result[start + 2 + end + 2..];
+                result = format!("{}{}\x1b[1m{}\x1b[22m{}", before, $color, content, after);
+            } else {
+                break;
+            }
+        }
+
+        // Handle italic
+        while let Some(start) = result.find('*') {
+            if let Some(end) = result[start + 1..].find('*') {
+                let before = &result[..start];
+                let content = &result[start + 1..start + 1 + end];
+                let after = &result[start + 1 + end + 1..];
+                result = format!("{}{}\x1b[3m{}\x1b[23m{}", before, $color, content, after);
+            } else {
+                break;
+            }
+        }
+
+        // Handle underline
+        while let Some(start) = result.find('_') {
+            if let Some(end) = result[start + 1..].find('_') {
+                let before = &result[..start];
+                let content = &result[start + 1..start + 1 + end];
+                let after = &result[start + 1 + end + 1..];
+                result = format!("{}{}\x1b[4m{}\x1b[24m{}", before, $color, content, after);
+            } else {
+                break;
+            }
+        }
+
+        // Ensure the color is applied to any remaining text
+        result = format!("{}{}", $color, result);
+        result
     }};
 }
 
