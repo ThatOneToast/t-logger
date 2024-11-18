@@ -19,6 +19,8 @@ pub use crate::{
     get_colors,
     get_borders,
     get_symbols,
-    style_text
+    style_text,
+    clear_log_levels,
+    add_log_levels,
     
 };

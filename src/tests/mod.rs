@@ -4,6 +4,8 @@ pub fn info() {
     use super::*;
 
     init_logger("Logs", LogInterval::OneHour).unwrap();
+    clear_log_levels();
+    add_log_levels!(LogLevel::Debug, LogLevel::Warn, LogLevel::Error);
 
     customize_colors(Colors {
         // info_text: crate::ansi_rgb!(32, 80, 123),

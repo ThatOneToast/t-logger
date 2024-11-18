@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::OnceLock};
 
-use logger::{LogInterval, Logger};
+use logger::{LogInterval, LogLevel, Logger};
 use styling::*;
 
 pub mod logger;
@@ -12,7 +12,7 @@ mod tests;
 ///
 /// This is the global logger, if enabled
 /// all logs will be written into a daily log file at the provided path
-pub static LOGGER: OnceLock<Logger> = OnceLock::new();
+pub static mut LOGGER: OnceLock<Logger> = OnceLock::new();
 /// DEBUG is enabled by default
 ///
 /// If you are ready to ship to production, setting this to false will prevent debug messages from being printed
@@ -26,9 +26,47 @@ pub static DEBUG: OnceLock<bool> = OnceLock::new();
 /// With the name format of `YYYY-MM-DD.log`.
 #[inline]
 pub fn init_logger<P: Into<PathBuf>>(path: P, log_interval: LogInterval) -> std::io::Result<()> {
-    let logger = Logger::new(path, log_interval)?;
-    LOGGER.set(logger).unwrap_or(());
+    unsafe {
+        let logger = Logger::new(path, log_interval)?;
+        LOGGER.set(logger).unwrap_or(());
+    }
     Ok(())
+}
+
+/// Clears the list of Log types to save to log files
+/// 
+/// By default all log types are saved to log files.
+/// 
+/// This is useful if you want to only save certain types of logs to file
+/// Like not saving success logs for example as well they have succeeded.
+#[inline]
+pub fn clear_log_levels() {
+    unsafe {
+        _ = LOGGER.get_mut().unwrap().clear_log_levels();
+    }
+}
+
+/// Adds log types to the list of log types to save to log files
+/// 
+/// Only save the logs of the types you need!
+/// 
+/// # Example
+/// ```rust
+/// use t_logger::prelude::*;
+/// 
+/// init_logger("Logs", LogInterval::OneHour).unwrap();
+/// clear_log_levels(); // Want to clear always, because by default all log types are saved
+/// add_log_levels!(LogLevel::Debug, LogLevel::Warn, LogLevel::Error);
+/// ```
+#[macro_export]
+macro_rules! add_log_levels {
+    ($($level:expr),+ $(,)?) => {
+        unsafe {
+            $(
+                _ = LOGGER.get_mut().unwrap().add_log_level($level);
+            )+
+        }
+    };
 }
 
 /// Converts RGB values to an ANSI escape code
@@ -282,9 +320,11 @@ macro_rules! info_box {
             $($arg)*
         );
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&log) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&log) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     };
@@ -310,9 +350,11 @@ macro_rules! warn_box {
             $($arg)*
         );
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&log) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&log) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     };
@@ -338,9 +380,11 @@ macro_rules! error_box {
             $($arg)*
         );
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&log) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&log) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     };
@@ -366,9 +410,11 @@ macro_rules! success_box {
             $($arg)*
         );
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&log) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&log) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     };
@@ -397,9 +443,11 @@ macro_rules! debug_box {
             $($arg)*
         );
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&log) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&log) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     };
@@ -432,6 +480,39 @@ macro_rules! make_log {
     }};
 }
 
+/// Applies styling to text using markdown-like syntax
+/// 
+/// # Syntax
+/// - `**text**` for bold
+/// - `*text*` for italic
+/// - `_text_` for underline
+/// - `~text~` for strikethrough
+/// - `@text@` for dim
+/// 
+/// Styles can be nested and combined.
+/// 
+/// # Example
+/// ```rust
+/// use tlogger::prelude::*;
+/// 
+/// let text = style_text!(
+///     "This is **bold**, *italic*, and _underlined_. 
+///     You can also do **bold _with_ *italic* inside**", 
+///     colors.info_text
+/// );
+/// 
+/// // Combine multiple styles
+/// let status = style_text!(
+///     "Status: **_CRITICAL_** - @dimmed details@",
+///     colors.error_text
+/// );
+/// 
+/// // Use in logging
+/// info!("Server", "System status is *_important_*");
+/// ```
+/// 
+/// Note: All styles are automatically stripped when written to log files,
+/// preserving only the text content.
 #[macro_export]
 macro_rules! style_text {
     ($text:expr, $color:expr) => {{
@@ -491,9 +572,11 @@ macro_rules! info {
         );
         println!("{msg}");
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&msg) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&msg) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     }};
@@ -512,9 +595,11 @@ macro_rules! warn {
         );
         println!("{msg}");
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&msg) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&msg) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     }};
@@ -532,9 +617,11 @@ macro_rules! error {
         );
         eprintln!("{msg}");
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&msg) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&msg) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     }};
@@ -552,9 +639,11 @@ macro_rules! success {
         );
         println!("{msg}");
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&msg) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&msg) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     }};
@@ -575,9 +664,11 @@ macro_rules! debug {
             println!("{msg}");
         }
 
-        if let Some(logger) = $crate::LOGGER.get() {
-            if let Err(e) = logger.log(&msg) {
-                eprintln!("Error logging to file: {e}");
+        unsafe {
+            if let Some(logger) = $crate::LOGGER.get() {
+                if let Err(e) = logger.log(&msg) {
+                    eprintln!("Error logging to file: {e}");
+                }
             }
         }
     }};

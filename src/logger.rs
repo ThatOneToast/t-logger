@@ -77,9 +77,38 @@ impl LogInterval {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum LogLevel {
+    Debug,
+    Info,
+    Warn,
+    Error,
+    Success,
+}
+
+impl LogLevel {
+    // Helper function to extract log level from message
+    fn from_message(message: &str) -> Option<LogLevel> {
+        if message.contains("ℹ") {
+            Some(LogLevel::Info)
+        } else if message.contains("⚠") {
+            Some(LogLevel::Warn)
+        } else if message.contains("✖") {
+            Some(LogLevel::Error)
+        } else if message.contains("✔") {
+            Some(LogLevel::Success)
+        } else if message.contains("⁂") {
+            Some(LogLevel::Debug)
+        } else {
+            None
+        }
+    }
+}
+
 pub struct Logger {
     base_path: PathBuf,
     log_interval: LogInterval,
+    log_levels: Vec<LogLevel>,
 }
 
 impl Logger {
@@ -89,7 +118,24 @@ impl Logger {
         Ok(Logger {
             base_path,
             log_interval,
+            log_levels: vec![
+                LogLevel::Debug,
+                LogLevel::Info,
+                LogLevel::Warn,
+                LogLevel::Error,
+                LogLevel::Success,
+            ],
         })
+    }
+
+    /// Clear all log levels
+    pub fn clear_log_levels(&mut self) {
+        self.log_levels.clear();
+    }
+
+    /// Add the types of logs to be saved to log files.
+    pub fn add_log_level(&mut self, log_level: LogLevel) {
+        self.log_levels.push(log_level);
     }
 
     fn get_log_file(&self) -> std::io::Result<File> {
@@ -102,10 +148,15 @@ impl Logger {
     }
 
     pub fn log(&self, message: &str) -> std::io::Result<()> {
-        let mut file = self.get_log_file()?;
-        let cleaned_message = strip_ansi_codes(message);
-        file.write_all(cleaned_message.as_bytes())?;
-        file.write_all(b"\n")?;
+        // Check if this message's log level is in our allowed levels
+        if let Some(level) = LogLevel::from_message(message) {
+            if self.log_levels.contains(&level) {
+                let mut file = self.get_log_file()?;
+                let cleaned_message = strip_ansi_codes(message);
+                file.write_all(cleaned_message.as_bytes())?;
+                file.write_all(b"\n")?;
+            }
+        }
         Ok(())
     }
 }

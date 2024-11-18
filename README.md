@@ -4,14 +4,35 @@ A versatile and stylish logging library for Rust applications that provides both
 
 ## Features
 
-- 📝 Multiple log levels (info, warn, error, success, debug)
-- 🎨 Full RGB color support with true color ANSI codes
-- 📦 Box-style formatted messages
-- 📅 Configurable log file intervals (hourly, every 3 hours, every 6 hours, ..., Daily)
-- 🔍 Debug mode toggle
-- ⏰ Timestamp integration
-- 💾 File logging with clean (ANSI-stripped) output
-- 🎯 Fully customizable styling (colors, symbols, borders)
+- 📝 Multiple log levels with selective file logging
+  - Info, Warn, Error, Success, Debug levels
+  - Control which levels get saved to files
+  - Console output for all levels regardless of file settings
+
+- 🎨 Rich text formatting
+  - Full RGB color support with true color ANSI codes
+  - Text styling (bold, italic, underline, strikethrough, dim)
+  - Nested and combined styles support
+
+- 📦 Flexible output formats
+  - Single-line logging with timestamps
+  - Box-style messages with titles
+  - Clean file output (automatically strips ANSI codes)
+
+- ⏰ Time-based file management
+  - Configurable log rotation intervals
+  - Hourly, 3-hour, 6-hour, 9-hour, 12-hour, or daily files
+  - Automatic file creation and naming
+
+- 🎯 Extensive customization options
+  - Custom colors for each log level
+  - Customizable symbols and borders
+  - Separate colors for titles and message text
+
+- 🔍 Development features
+  - Debug mode toggle for production/development
+  - Millisecond-precision timestamps
+  - Error handling for file operations
 
 ## Installation
 
@@ -66,24 +87,43 @@ fn main() {
     debug_box!("Processing", "Items in queue: {}", 42);
 }
 ```
+## Log Management
 
-## Log Levels
-
-- `info!()` / `info_box!()` - Cyan colored information messages
-- `warn!()` / `warn_box!()` - Yellow colored warning messages
-- `error!()` / `error_box!()` - Red colored error messages
-- `success!()` / `success_box!()` - Green colored success messages
-- `debug!()` / `debug_box!()` - Magenta colored debug messages
-
-## Log Intervals
-
+### Log Intervals
 Configure how frequently new log files are created:
+```rust
+init_logger("logs", LogInterval::OneHour).unwrap();
+```
+
+Available intervals:
 - `LogInterval::OneHour` - New file every hour (e.g., `2024-02-20-14h-15h.log`)
 - `LogInterval::ThreeHour` - Every 3 hours (e.g., `2024-02-20-12h-15h.log`)
 - `LogInterval::SixHour` - Every 6 hours (e.g., `2024-02-20-12h-18h.log`)
 - `LogInterval::NineHour` - Every 9 hours (e.g., `2024-02-20-09h-18h.log`)
 - `LogInterval::TwelveHour` - Every 12 hours (e.g., `2024-02-20-12h-00h.log`)
 - `LogInterval::OneDay` - One file per day (e.g., `2024-02-20-00h-24h.log`)
+
+### Log Level Filtering
+Control which types of logs are saved to files:
+```rust
+use tlogger::prelude::*;
+
+// Initialize logger
+init_logger("logs", LogInterval::OneHour).unwrap();
+
+// Clear default log levels (by default all levels are saved)
+clear_log_levels();
+
+// Add only the log levels you want to save
+add_log_levels!(
+    LogLevel::Debug,
+    LogLevel::Warn,
+    LogLevel::Error
+);
+
+// Now only Debug, Warn, and Error logs will be saved to files
+// Info and Success logs will still show in console but won't be saved
+```
 
 ## Styling Options
 
