@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::OnceLock};
 
-use logger::Logger;
+use logger::{LogInterval, Logger};
 use styling::*;
 
 pub mod logger;
@@ -25,8 +25,8 @@ pub static DEBUG: OnceLock<bool> = OnceLock::new();
 /// All logs are stored in the directory specified by `path`.
 /// With the name format of `YYYY-MM-DD.log`.
 #[inline]
-pub fn init_logger<P: Into<PathBuf>>(path: P) -> std::io::Result<()> {
-    let logger = Logger::new(path)?;
+pub fn init_logger<P: Into<PathBuf>>(path: P, log_interval: LogInterval) -> std::io::Result<()> {
+    let logger = Logger::new(path, log_interval)?;
     LOGGER.set(logger).unwrap_or(());
     Ok(())
 }
@@ -189,7 +189,8 @@ pub fn get_borders() -> &'static Borders {
 
 /// Creates a perfectly formatted box with the given title and message
 pub fn create_styled_box(
-    color: &str,
+    box_color: &str,
+    text_color: &str,
     symbol: &str,
     title: &str,
     message: &str,
@@ -207,19 +208,20 @@ pub fn create_styled_box(
 
     // Top border with symbol, title and timestamp
     result.push_str(&format!(
-        "{}{}{}─{} {}{}{}{}{}{}{}{}\n",
-        color,
+        "{}{}{}─{} {}{}{}{}{}{}{}{}{}\n",
+        box_color,
         get_borders().top_left,
         get_colors().bold,
         symbol,
         title,
-        color,
+        box_color,
         get_borders().horizontal.repeat(total_space),
         get_colors().dim,
         timestamp_display,
         get_colors().reset,
-        color,
-        get_borders().top_right
+        box_color,
+        get_borders().top_right,
+        get_colors().reset
     ));
 
     // Message lines - preserve original formatting and add padding
@@ -227,10 +229,13 @@ pub fn create_styled_box(
         let clean_line = strip_ansi_codes(line);
         let padding = width - clean_line.len() - 4; // 4 accounts for the border and spacing
         result.push_str(&format!(
-            "{}{} {} {}{}{}\n",
-            color,
+            "{}{} {}{}{}{} {}{}{}\n",
+            box_color,
             get_borders().vertical,
+            text_color,
             line,
+            get_colors().reset,
+            box_color,
             " ".repeat(padding),
             get_borders().vertical,
             get_colors().reset,
@@ -240,7 +245,7 @@ pub fn create_styled_box(
     // Bottom border
     result.push_str(&format!(
         "{}{}{}{}{}\n",
-        color,
+        box_color,
         get_borders().bottom_left,
         get_borders().horizontal.repeat(width - 2),
         get_borders().bottom_right,
@@ -262,21 +267,22 @@ macro_rules! info_box {
     ($title:expr, $($arg:tt)*) => {
         print!("{}", $crate::create_styled_box(
             $crate::get_colors().info,
+            $crate::get_colors().info_text,
             $crate::get_symbols().info,
             $title,
             &format!($($arg)*),
             75
         ));
         let log = make_log!(
-            $crate::get_colors().debug,
-            $crate::get_symbols().debug,
+            $crate::get_colors().info,
+            $crate::get_symbols().info,
             $title,
+            $crate::get_colors().info_text,
             $($arg)*
         );
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&log);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&log) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -289,21 +295,22 @@ macro_rules! warn_box {
     ($title:expr, $($arg:tt)*) => {
         print!("{}", $crate::create_styled_box(
             $crate::get_colors().warn,
+            $crate::get_colors().warn_text,
             $crate::get_symbols().warn,
             $title,
             &format!($($arg)*),
             75
         ));
         let log = make_log!(
-            $crate::get_colors().debug,
-            $crate::get_symbols().debug,
+            $crate::get_colors().warn,
+            $crate::get_symbols().warn,
             $title,
+            $crate::get_colors().warn_text,
             $($arg)*
         );
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&log);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&log) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -316,21 +323,22 @@ macro_rules! error_box {
     ($title:expr, $($arg:tt)*) => {
         eprint!("{}", $crate::create_styled_box(
             $crate::get_colors().error,
+            $crate::get_colors().error_text,
             $crate::get_symbols().error,
             $title,
             &format!($($arg)*),
             75
         ));
         let log = make_log!(
-            $crate::get_colors().debug,
-            $crate::get_symbols().debug,
+            $crate::get_colors().error,
+            $crate::get_symbols().error,
             $title,
+            $crate::get_colors().error_text,
             $($arg)*
         );
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&log);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&log) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -343,21 +351,22 @@ macro_rules! success_box {
     ($title:expr, $($arg:tt)*) => {
         print!("{}", $crate::create_styled_box(
             $crate::get_colors().success,
+            $crate::get_colors().success_text,
             $crate::get_symbols().success,
             $title,
             &format!($($arg)*),
             75
         ));
         let log = make_log!(
-            $crate::get_colors().debug,
-            $crate::get_symbols().debug,
+            $crate::get_colors().success,
+            $crate::get_symbols().success,
             $title,
+            $crate::get_colors().success,
             $($arg)*
         );
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&log);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&log) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -371,6 +380,7 @@ macro_rules! debug_box {
         if *$crate::DEBUG.get().unwrap_or(&true) {
             print!("{}", $crate::create_styled_box(
                 $crate::get_colors().debug,
+                $crate::get_colors().debug_text,
                 $crate::get_symbols().debug,
                 $title,
                 &format!($($arg)*),
@@ -382,12 +392,12 @@ macro_rules! debug_box {
             $crate::get_colors().debug,
             $crate::get_symbols().debug,
             $title,
+            $crate::get_colors().debug_text,
             $($arg)*
         );
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&log);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&log) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -397,9 +407,9 @@ macro_rules! debug_box {
 /// Creates a log message with the given title, symbol, and message
 #[macro_export]
 macro_rules! make_log {
-    ($color:expr, $symbol:expr, $title:expr, $($arg:tt)*) => {{
+    ($color:expr, $symbol:expr, $title:expr, $textcolor:expr, $($arg:tt)*) => {{
         format!(
-            "{}{} {} {}{}{}{} {} {}{}{}{} {}",
+            "{}{} {} {}{}{}{} {} {}{}{}{}{} {}{}",
             $color,
             $symbol,
             $crate::get_colors().reset,
@@ -410,8 +420,10 @@ macro_rules! make_log {
             $crate::get_symbols().separator,
             $crate::get_colors().reset,
             $crate::get_colors().bold,
+            $color,
             $title,
             $crate::get_colors().reset,
+            $textcolor,
             format!($($arg)*)
         )
     }};
@@ -425,13 +437,13 @@ macro_rules! info {
             $crate::get_colors().info,
             $crate::get_symbols().info,
             $title,
+            $crate::get_colors().info_text,
             $($arg)*
         );
         println!("{msg}");
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&msg);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&msg) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -446,13 +458,13 @@ macro_rules! warn {
             $crate::get_colors().warn,
             $crate::get_symbols().warn,
             $title,
+            $crate::get_colors().warn_text,
             $($arg)*
         );
         println!("{msg}");
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&msg);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&msg) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -466,13 +478,13 @@ macro_rules! error {
             $crate::get_colors().error,
             $crate::get_symbols().error,
             $title,
+            $crate::get_colors().error_text,
             $($arg)*
         );
         eprintln!("{msg}");
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&msg);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&msg) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -486,13 +498,13 @@ macro_rules! success {
             $crate::get_colors().success,
             $crate::get_symbols().success,
             $title,
+            $crate::get_colors().success_text,
             $($arg)*
         );
         println!("{msg}");
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&msg);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&msg) {
                 eprintln!("Error logging to file: {e}");
             }
         }
@@ -507,6 +519,7 @@ macro_rules! debug {
             $crate::get_colors().debug,
             $crate::get_symbols().debug,
             $title,
+            $crate::get_colors().debug_text,
             $($arg)*
         );
         if *$crate::DEBUG.get().unwrap_or(&true) {
@@ -514,8 +527,7 @@ macro_rules! debug {
         }
 
         if let Some(logger) = $crate::LOGGER.get() {
-            let clean_log = $crate::strip_ansi_codes(&msg);
-            if let Err(e) = logger.log(&clean_log) {
+            if let Err(e) = logger.log(&msg) {
                 eprintln!("Error logging to file: {e}");
             }
         }

@@ -1,6 +1,6 @@
 [package]
 name = "tlogger"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["Toast <ThatOneToast@proton.me>"]
 description = "A simple logging library with a neat style and customizablity."

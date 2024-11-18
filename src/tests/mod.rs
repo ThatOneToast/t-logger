@@ -3,22 +3,23 @@
 pub fn info() {
     use super::*;
     
-    // init_logger("Logs").unwrap();
+    init_logger("Logs", LogInterval::OneHour).unwrap();
 
     customize_colors(Colors {
-        info: crate::ansi_rgb!(32, 80, 123),
-        debug: crate::ansi_rgb!(60, 200, 30),
+        // info_text: crate::ansi_rgb!(32, 80, 123),
+        // debug: crate::ansi_rgb!(60, 200, 30),
+        warn_text: crate::ansi_rgb!(0, 255, 0),
         ..Default::default()
     });
-    
-    customize_symbols(Symbols {
-        debug: "⟐",
-        ..Default::default()
-    });
-    
-    customize_borders(Borders {
-        ..Default::default()
-    });
+    // 
+    // customize_symbols(Symbols {
+        // debug: "⟐",
+        // ..Default::default()
+    // });
+    // 
+    // customize_borders(Borders {
+        // ..Default::default()
+    // });
     
     info!("Server", "Starting");
     success!("Login", "User {} connected", "Alice");

@@ -1,14 +1,13 @@
-# t_logger
+# Tlogger
 
 A versatile and stylish logging library for Rust applications that provides both console output and file logging capabilities with customization options.
-
 
 ## Features
 
 - 📝 Multiple log levels (info, warn, error, success, debug)
 - 🎨 Full RGB color support with true color ANSI codes
 - 📦 Box-style formatted messages
-- 📅 Automatic daily log file rotation
+- 📅 Configurable log file intervals (hourly, every 3 hours, every 6 hours, ..., Daily)
 - 🔍 Debug mode toggle
 - ⏰ Timestamp integration
 - 💾 File logging with clean (ANSI-stripped) output
@@ -20,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tlogger = "0.1.1"
+tlogger = "0.1.3"
 ```
 
 Or use the `cargo add` command:
@@ -34,12 +33,10 @@ cargo add tlogger
 ```rust
 use tlogger::prelude::*;
 
-#[cfg(test)]
-#[test]
-pub fn info() {
-    use super::*;
-
-    // init_logger("Logs").unwrap();
+fn main() {
+    // Initialize logger with hourly log files
+    init_logger("logs", LogInterval::OneHour).unwrap();
+    // Or use other intervals: ThreeHour, SixHour, NineHour, TwelveHour, OneDay
 
     customize_colors(Colors {
         info: ansi_rgb!(32, 80, 123),
@@ -68,7 +65,6 @@ pub fn info() {
     success_box!("Login", "User {} connected", "Alice");
     debug_box!("Processing", "Items in queue: {}", 42);
 }
-
 ```
 
 ## Log Levels
@@ -79,15 +75,26 @@ pub fn info() {
 - `success!()` / `success_box!()` - Green colored success messages
 - `debug!()` / `debug_box!()` - Magenta colored debug messages
 
+## Log Intervals
+
+Configure how frequently new log files are created:
+- `LogInterval::OneHour` - New file every hour (e.g., `2024-02-20-14h-15h.log`)
+- `LogInterval::ThreeHour` - Every 3 hours (e.g., `2024-02-20-12h-15h.log`)
+- `LogInterval::SixHour` - Every 6 hours (e.g., `2024-02-20-12h-18h.log`)
+- `LogInterval::NineHour` - Every 9 hours (e.g., `2024-02-20-09h-18h.log`)
+- `LogInterval::TwelveHour` - Every 12 hours (e.g., `2024-02-20-12h-00h.log`)
+- `LogInterval::OneDay` - One file per day (e.g., `2024-02-20-00h-24h.log`)
+
 ## Debug Mode
 
 Debug messages can be disabled in production while still being logged to file:
 ```rust
 set_debug(false);  // Disables console output for debug messages
 ```
+
 ## File Logging
 
-When initialized, logs are automatically saved to files with the format `YYYY-MM-DD.log` in the specified directory. All ANSI color codes are automatically stripped from the file output for better readability.
+When initialized, logs are automatically saved to files based on the specified interval. All ANSI color codes are automatically stripped from the file output for better readability.
 
 ## License
 
@@ -112,4 +119,3 @@ Box Style Output:
 │ User Alice connected                                                    │
 ╰─────────────────────────────────────────────────────────────────────────╯
 ```
----
