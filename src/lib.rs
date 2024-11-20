@@ -1,9 +1,11 @@
-use std::{path::PathBuf, sync::OnceLock};
+use std::sync::OnceLock;
 
-use logger::{LogInterval, LogLevel, Logger};
+use logger::Logger;
+use prelude::strip_ansi_codes;
 use styling::*;
 
 pub mod logger;
+pub mod opts;
 pub mod prelude;
 pub mod styling;
 mod tests;
@@ -19,192 +21,39 @@ pub static mut LOGGER: OnceLock<Logger> = OnceLock::new();
 /// to the console, but will still be logged to a log file.
 pub static DEBUG: OnceLock<bool> = OnceLock::new();
 
-/// Initializes the logger
+/// Text Styling is on by default
 ///
-/// Logs are generated based on the current day.
-/// All logs are stored in the directory specified by `path`.
-/// With the name format of `YYYY-MM-DD.log`.
-#[inline]
-pub fn init_logger<P: Into<PathBuf>>(path: P, log_interval: LogInterval) -> std::io::Result<()> {
-    unsafe {
-        let logger = Logger::new(path, log_interval)?;
-        LOGGER.set(logger).unwrap_or(());
-    }
-    Ok(())
-}
-
-/// Clears the list of Log types to save to log files
-/// 
-/// By default all log types are saved to log files.
-/// 
-/// This is useful if you want to only save certain types of logs to file
-/// Like not saving success logs for example as well they have succeeded.
-#[inline]
-pub fn clear_log_levels() {
-    unsafe {
-        _ = LOGGER.get_mut().unwrap().clear_log_levels();
-    }
-}
-
-/// Adds log types to the list of log types to save to log files
-/// 
-/// Only save the logs of the types you need!
-/// 
-/// # Example
+/// Text styling is the ability to have underlines, bold, italics, etc. in your logs
+///
+/// # Example usage of a Test Style
 /// ```rust
-/// use t_logger::prelude::*;
-/// 
-/// init_logger("Logs", LogInterval::OneHour).unwrap();
-/// clear_log_levels(); // Want to clear always, because by default all log types are saved
-/// add_log_levels!(LogLevel::Debug, LogLevel::Warn, LogLevel::Error);
+/// fn printme() {
+///     info!("Title", "THis message _here has underlines_");
+/// }
 /// ```
-#[macro_export]
-macro_rules! add_log_levels {
-    ($($level:expr),+ $(,)?) => {
-        unsafe {
-            $(
-                _ = LOGGER.get_mut().unwrap().add_log_level($level);
-            )+
-        }
-    };
-}
-
-/// Converts RGB values to an ANSI escape code
 ///
-/// # Example
-/// ```rust
-/// let red = rgb_to_ansi(255, 0, 0);       // "\x1b[38;2;255;0;0m"
-/// let blue = rgb_to_ansi(0, 0, 255);      // "\x1b[38;2;0;0;255m"
-/// let white = rgb_to_ansi(255, 255, 255); // "\x1b[38;2;255;255;255m"
-/// ```
+/// if toggled to off these styles will be ignored.
+pub static mut TEXT_STYLING: OnceLock<bool> = OnceLock::new();
+
 #[inline]
-pub fn rgb_to_ansi(r: u8, g: u8, b: u8) -> String {
-    format!("\x1b[38;2;{};{};{}m", r, g, b)
+pub fn text_styling_on() {
+    unsafe { TEXT_STYLING.set(true).unwrap() };
 }
 
-/// Converts RGB values to an ANSI background color escape code
-///
-/// # Example
-/// ```rust
-/// let red = rgb_to_ansi_bg(255, 0, 0);       // "\x1b[48;2;255;0;0m"
-/// let blue = rgb_to_ansi_bg(0, 0, 255);      // "\x1b[48;2;0;0;255m"
-/// let white = rgb_to_ansi_bg(255, 255, 255); // "\x1b[48;2;255;255;255m"
-/// ```
 #[inline]
-pub fn rgb_to_ansi_bg(r: u8, g: u8, b: u8) -> String {
-    format!("\x1b[48;2;{};{};{}m", r, g, b)
+pub fn text_styling_off() {
+    unsafe { TEXT_STYLING.set(false).unwrap() };
 }
 
-/// Creates an ANSI escape code for RGB colors
-///
-/// # Returns
-/// This returns a static string slice.
-///
-/// If you need just a normal string, see `rgb_to_ansi`
-///
-/// # Example
-/// ```rust
-/// println!("{}Colored text{}", ansi_rgb!(255, 0, 0), get_colors().reset);
-/// ```
-#[macro_export]
-macro_rules! ansi_rgb {
-    ($r:expr, $g:expr, $b:expr) => {
-        concat!("\x1b[38;2;", $r, ";", $g, ";", $b, "m")
-    };
-}
-
-/// Creates an ANSI background color escape code
-///
-/// # Returns
-/// This returns a static string slice.
-///
-/// If you need just a normal string, see `rgb_to_ansi_bg`
-///
-/// # Example
-/// ```rust
-/// println!("{}Colored text{}", ansi_bg_rgb!(255, 0, 0), get_colors().reset);
-/// ```
-#[macro_export]
-macro_rules! ansi_rgb_bg {
-    ($r:expr, $g:expr, $b:expr) => {
-        concat!("\x1b[48;2;", $r, ";", $g, ";", $b, "m")
-    };
-}
-
-/// Debug is enabled by default
-///
-/// If set to false all `debug` macros will not be printed to the console, but will
-/// still be logged to the log file.
 #[inline]
-pub fn set_debug(debug: bool) {
-    DEBUG.set(debug).unwrap_or(());
+pub fn get_text_styling() -> &'static bool {
+    unsafe { TEXT_STYLING.get_or_init(|| true) }
 }
 
 /// Get the current timestamp in the format HH:MM:SS.SSS
 #[inline]
 pub fn get_timestamp() -> String {
     chrono::Local::now().format("%H:%M:%S%.3f").to_string()
-}
-
-/// Set your own colors for formatting
-///
-/// # Example
-///
-/// ```rust
-/// use t_logger::prelude::*;
-///
-/// customize_colors(Colors {
-///     info: "\x1b[96m",    // Cyan
-///     warn: "\x1b[93m",    // Yellow
-///     error: "\x1b[91m",   // Red
-///     success: "\x1b[92m", // Green
-///     debug: "\x1b[95m",   // Magenta
-///     ..Default::default()
-/// });
-/// ```
-#[inline]
-pub fn customize_colors(colors: Colors) {
-    _ = COLORS.set(colors);
-}
-
-/// Set your own symbols for formatting
-///
-/// # Example
-///
-/// ```rust
-/// use t_logger::prelude::*;
-///
-/// customize_symbols(Symbols {
-///     info: "i",
-///     warn: "[WARN]",
-///     error: "[ERROR]",
-///     ..Default::default()
-/// });
-/// ```
-#[inline]
-pub fn customize_symbols(symbols: Symbols) {
-    _ = SYMBOLS.set(symbols);
-}
-
-/// Set your own border characters for formatting
-///
-/// # Example
-///
-/// ```rust
-/// use t_logger::prelude::*;
-///
-/// customize_borders(Borders {
-///     top_left: "╭",
-///     top_right: "╮",
-///     bottom_left: "╰",
-///     bottom_right: "╯",
-///     horizontal: "─",
-///     vertical: "│",
-/// });
-/// ```
-#[inline]
-pub fn customize_borders(borders: Borders) {
-    _ = BORDERS.set(borders);
 }
 
 /// Get the current colors
@@ -232,21 +81,28 @@ pub fn create_styled_box(
     symbol: &str,
     title: &str,
     message: &str,
-    width: usize,
+    mut width: usize,
 ) -> String {
-    let message_lines: Vec<&str> = message.lines().collect();
     let mut result = String::new();
 
     // Get timestamp
     let timestamp = chrono::Local::now().format("%H:%M:%S").to_string();
     let timestamp_display = format!("⏳ {}", timestamp);
 
+    // Calculate minimum required width based on title and timestamp
+    let minimum_width = title.len() + timestamp_display.len() + symbol.len() + 4;
+
+    // Adjust width if necessary
+    if width < minimum_width {
+        width = minimum_width;
+    }
+
     // Calculate spaces needed between title and timestamp
-    let total_space = width - title.len() - timestamp_display.len() - symbol.len() - 1;
+    let total_space = width - title.len() - timestamp_display.len() - symbol.len() - 2;
 
     // Top border with symbol, title and timestamp
     result.push_str(&format!(
-        "{}{}{}─{} {}{}{}{}{}{}{}{}{}\n",
+        "{}{}{} {} {}{}{}{}{}{}{}{}{}\n", // Added space after left border
         box_color,
         get_borders().top_left,
         get_colors().bold,
@@ -262,414 +118,154 @@ pub fn create_styled_box(
         get_colors().reset
     ));
 
-    // Message lines - preserve original formatting and add padding
-    for line in message_lines {
-        let processed_line = style_text!(line, text_color);
-        let clean_processed = strip_ansi_codes(&processed_line);
-        let padding = width - clean_processed.len() - 3; // Adjusted padding by 1
+    // Process message
+    let processed_message = style_text!(message, text_color);
+    let clean_message = strip_ansi_codes(&processed_message);
+    let max_line_width = width.saturating_sub(4); // Account for borders and padding
 
-        result.push_str(&format!(
-            "{}{} {}{}{}{}{}{}\n",
-            box_color,
-            get_borders().vertical,
-            processed_line,
-            get_colors().reset,
-            box_color, // Reset to box color before padding and border
-            " ".repeat(padding),
-            get_borders().vertical,
-            get_colors().reset,
-        ));
+    // Split message by explicit line breaks first
+    for paragraph in clean_message.split('\n') {
+        if paragraph.is_empty() {
+            // Handle empty lines
+            result.push_str(&format!(
+                "{}{} {}{}{}\n",
+                box_color,
+                get_borders().vertical,
+                " ".repeat(width.saturating_sub(4)),
+                get_borders().vertical,
+                get_colors().reset
+            ));
+            continue;
+        }
+
+        // Word wrap within each paragraph
+        let mut current_line = String::new();
+        let mut current_width = 0;
+        let words: Vec<&str> = paragraph.split_whitespace().collect();
+
+        for (i, word) in words.iter().enumerate() {
+            let word_width = word.len();
+
+            // If a single word is longer than max_line_width, split it
+            if word_width > max_line_width {
+                // Print current line if not empty
+                if !current_line.is_empty() {
+                    let padding = width.saturating_sub(current_width + 4);
+                    result.push_str(&format!(
+                        "{}{} {}{}{}{}{}{}\n",
+                        box_color,
+                        get_borders().vertical,
+                        style_text!(&current_line, text_color),
+                        get_colors().reset,
+                        box_color,
+                        " ".repeat(padding),
+                        get_borders().vertical,
+                        get_colors().reset
+                    ));
+                }
+
+                // Split long word into chunks
+                let mut remaining = word.to_string();
+                while !remaining.is_empty() {
+                    let (chunk, rest) = if remaining.len() > max_line_width {
+                        remaining.split_at(max_line_width)
+                    } else {
+                        (remaining.as_str(), "")
+                    };
+
+                    let padding = width.saturating_sub(chunk.len() + 4);
+                    result.push_str(&format!(
+                        "{}{} {}{}{}{}{}{}\n",
+                        box_color,
+                        get_borders().vertical,
+                        style_text!(chunk, text_color),
+                        get_colors().reset,
+                        box_color,
+                        " ".repeat(padding),
+                        get_borders().vertical,
+                        get_colors().reset
+                    ));
+
+                    remaining = rest.to_string();
+                }
+                current_line.clear();
+                current_width = 0;
+                continue;
+            }
+
+            let space_width = if current_width == 0 { 0 } else { 1 };
+
+            if current_width + space_width + word_width <= max_line_width {
+                // Add word to current line
+                if current_width > 0 {
+                    current_line.push(' ');
+                    current_width += 1;
+                }
+                current_line.push_str(word);
+                current_width += word_width;
+
+                // Print line if it's the last word
+                if i == words.len() - 1 {
+                    let padding = width.saturating_sub(current_width + 4);
+                    result.push_str(&format!(
+                        "{}{} {}{}{}{}{}{}\n",
+                        box_color,
+                        get_borders().vertical,
+                        style_text!(&current_line, text_color),
+                        get_colors().reset,
+                        box_color,
+                        " ".repeat(padding),
+                        get_borders().vertical,
+                        get_colors().reset
+                    ));
+                }
+            } else {
+                // Print current line and start new one
+                let padding = width.saturating_sub(current_width + 4);
+                result.push_str(&format!(
+                    "{}{} {}{}{}{}{}{}\n",
+                    box_color,
+                    get_borders().vertical,
+                    style_text!(&current_line, text_color),
+                    get_colors().reset,
+                    box_color,
+                    " ".repeat(padding),
+                    get_borders().vertical,
+                    get_colors().reset
+                ));
+
+                // Start new line with current word
+                current_line = word.to_string();
+                current_width = word_width;
+
+                // Print the word if it's the last one
+                if i == words.len() - 1 {
+                    let padding = width.saturating_sub(current_width + 4);
+                    result.push_str(&format!(
+                        "{}{} {}{}{}{}{}{}\n",
+                        box_color,
+                        get_borders().vertical,
+                        style_text!(&current_line, text_color),
+                        get_colors().reset,
+                        box_color,
+                        " ".repeat(padding),
+                        get_borders().vertical,
+                        get_colors().reset
+                    ));
+                }
+            }
+        }
     }
 
     // Bottom border
     result.push_str(&format!(
-        "{}{}{}{}{}\n",
+        "{}{} {}{} {}\n", // Added spaces for alignment
         box_color,
         get_borders().bottom_left,
-        get_borders().horizontal.repeat(width - 2),
+        get_borders().horizontal.repeat(width - 4), // Adjusted width
         get_borders().bottom_right,
         get_colors().reset
     ));
 
     result
-}
-
-/// Strips ANSI escape codes from a string
-pub fn strip_ansi_codes(s: &str) -> String {
-    let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
-    re.replace_all(s, "").to_string()
-}
-
-/// Creates a Cyan box with the given title and message
-#[macro_export]
-macro_rules! info_box {
-    ($title:expr, $($arg:tt)*) => {
-        print!("{}", $crate::create_styled_box(
-            $crate::get_colors().info,
-            $crate::get_colors().info_text,
-            $crate::get_symbols().info,
-            $title,
-            &format!($($arg)*),
-            75
-        ));
-        let log = make_log!(
-            $crate::get_colors().info,
-            $crate::get_symbols().info,
-            $title,
-            $crate::get_colors().info_text,
-            $($arg)*
-        );
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&log) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    };
-}
-
-/// Creates a Yellow box with the given title and message
-#[macro_export]
-macro_rules! warn_box {
-    ($title:expr, $($arg:tt)*) => {
-        print!("{}", $crate::create_styled_box(
-            $crate::get_colors().warn,
-            $crate::get_colors().warn_text,
-            $crate::get_symbols().warn,
-            $title,
-            &format!($($arg)*),
-            75
-        ));
-        let log = make_log!(
-            $crate::get_colors().warn,
-            $crate::get_symbols().warn,
-            $title,
-            $crate::get_colors().warn_text,
-            $($arg)*
-        );
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&log) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    };
-}
-
-/// Creates a Red box with the given title and message
-#[macro_export]
-macro_rules! error_box {
-    ($title:expr, $($arg:tt)*) => {
-        eprint!("{}", $crate::create_styled_box(
-            $crate::get_colors().error,
-            $crate::get_colors().error_text,
-            $crate::get_symbols().error,
-            $title,
-            &format!($($arg)*),
-            75
-        ));
-        let log = make_log!(
-            $crate::get_colors().error,
-            $crate::get_symbols().error,
-            $title,
-            $crate::get_colors().error_text,
-            $($arg)*
-        );
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&log) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    };
-}
-
-/// Creates a Green box with the given title and message
-#[macro_export]
-macro_rules! success_box {
-    ($title:expr, $($arg:tt)*) => {
-        print!("{}", $crate::create_styled_box(
-            $crate::get_colors().success,
-            $crate::get_colors().success_text,
-            $crate::get_symbols().success,
-            $title,
-            &format!($($arg)*),
-            75
-        ));
-        let log = make_log!(
-            $crate::get_colors().success,
-            $crate::get_symbols().success,
-            $title,
-            $crate::get_colors().success,
-            $($arg)*
-        );
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&log) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    };
-}
-
-/// Creates a Magenta box with the given title and message
-#[macro_export]
-macro_rules! debug_box {
-    ($title:expr, $($arg:tt)*) => {
-        if *$crate::DEBUG.get().unwrap_or(&true) {
-            print!("{}", $crate::create_styled_box(
-                $crate::get_colors().debug,
-                $crate::get_colors().debug_text,
-                $crate::get_symbols().debug,
-                $title,
-                &format!($($arg)*),
-                75
-            ));
-        }
-
-        let log = make_log!(
-            $crate::get_colors().debug,
-            $crate::get_symbols().debug,
-            $title,
-            $crate::get_colors().debug_text,
-            $($arg)*
-        );
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&log) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    };
-}
-
-/// Creates a log message with the given title, symbol, and message
-#[macro_export]
-macro_rules! make_log {
-    ($color:expr, $symbol:expr, $title:expr, $textcolor:expr, $($arg:tt)*) => {{
-        let message = format!($($arg)*);
-        let processed_message = style_text!(message, $textcolor);
-
-        format!(
-            "{}{} {} {}{}{}{} {} {}{}{}{}{} {}",
-            $color,
-            $symbol,
-            $crate::get_colors().reset,
-            $crate::get_colors().dim,
-            $crate::get_timestamp(),
-            $crate::get_colors().reset,
-            $crate::get_colors().dim,
-            $crate::get_symbols().separator,
-            $crate::get_colors().reset,
-            $crate::get_colors().bold,
-            $color,
-            $title,
-            $crate::get_colors().reset,
-            processed_message
-        )
-    }};
-}
-
-/// Applies styling to text using markdown-like syntax
-/// 
-/// # Syntax
-/// - `**text**` for bold
-/// - `*text*` for italic
-/// - `_text_` for underline
-/// - `~text~` for strikethrough
-/// - `@text@` for dim
-/// 
-/// Styles can be nested and combined.
-/// 
-/// # Example
-/// ```rust
-/// use tlogger::prelude::*;
-/// 
-/// let text = style_text!(
-///     "This is **bold**, *italic*, and _underlined_. 
-///     You can also do **bold _with_ *italic* inside**", 
-///     colors.info_text
-/// );
-/// 
-/// // Combine multiple styles
-/// let status = style_text!(
-///     "Status: **_CRITICAL_** - @dimmed details@",
-///     colors.error_text
-/// );
-/// 
-/// // Use in logging
-/// info!("Server", "System status is *_important_*");
-/// ```
-/// 
-/// Note: All styles are automatically stripped when written to log files,
-/// preserving only the text content.
-#[macro_export]
-macro_rules! style_text {
-    ($text:expr, $color:expr) => {{
-        let text = $text.to_string();
-        let mut result = text.clone();
-
-        // Bold (process first as it uses double markers)
-        while let Some(start) = result.find("**") {
-            if let Some(end) = result[start + 2..].find("**") {
-                let before = &result[..start];
-                let content = &result[start + 2..start + 2 + end];
-                let after = &result[start + 2 + end + 2..];
-                result = format!("{}{}\x1b[1m{}\x1b[22m{}", before, $color, content, after);
-            } else {
-                break;
-            }
-        }
-
-        // Process other styles
-        let styles = [
-            ("*", "\x1b[3m", "\x1b[23m"), // Italic
-            ("_", "\x1b[4m", "\x1b[24m"), // Underline
-            ("~", "\x1b[9m", "\x1b[29m"), // Strikethrough
-            ("@", "\x1b[2m", "\x1b[22m"), // Dim
-        ];
-
-        for (marker, start_code, end_code) in styles {
-            while let Some(start) = result.find(marker) {
-                if let Some(end) = result[start + 1..].find(marker) {
-                    let before = &result[..start];
-                    let content = &result[start + 1..start + 1 + end];
-                    let after = &result[start + 1 + end + 1..];
-                    result = format!(
-                        "{}{}{}{}{}{}",
-                        before, $color, start_code, content, end_code, after
-                    );
-                } else {
-                    break;
-                }
-            }
-        }
-
-        format!("{}{}{}", $color, result, get_colors().reset)
-    }};
-}
-
-/// Creates a single line message with a symbol timestamp, title, and message
-#[macro_export]
-macro_rules! info {
-    ($title:expr, $($arg:tt)*) => {{
-        let msg = make_log!(
-            $crate::get_colors().info,
-            $crate::get_symbols().info,
-            $title,
-            $crate::get_colors().info_text,
-            $($arg)*
-        );
-        println!("{msg}");
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&msg) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    }};
-}
-
-/// Creates a single line message with a symbol timestamp, title, and message
-#[macro_export]
-macro_rules! warn {
-    ($title:expr, $($arg:tt)*) => {{
-        let msg = make_log!(
-            $crate::get_colors().warn,
-            $crate::get_symbols().warn,
-            $title,
-            $crate::get_colors().warn_text,
-            $($arg)*
-        );
-        println!("{msg}");
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&msg) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    }};
-}
-/// Creates a single line message with a symbol timestamp, title, and message
-#[macro_export]
-macro_rules! error {
-    ($title:expr, $($arg:tt)*) => {{
-        let msg = make_log!(
-            $crate::get_colors().error,
-            $crate::get_symbols().error,
-            $title,
-            $crate::get_colors().error_text,
-            $($arg)*
-        );
-        eprintln!("{msg}");
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&msg) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    }};
-}
-/// Creates a single line message with a symbol timestamp, title, and message
-#[macro_export]
-macro_rules! success {
-    ($title:expr, $($arg:tt)*) => {{
-        let msg = make_log!(
-            $crate::get_colors().success,
-            $crate::get_symbols().success,
-            $title,
-            $crate::get_colors().success_text,
-            $($arg)*
-        );
-        println!("{msg}");
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&msg) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    }};
-}
-
-/// Creates a single line message with a symbol timestamp, title, and message
-#[macro_export]
-macro_rules! debug {
-    ($title:expr, $($arg:tt)*) => {{
-        let msg = make_log!(
-            $crate::get_colors().debug,
-            $crate::get_symbols().debug,
-            $title,
-            $crate::get_colors().debug_text,
-            $($arg)*
-        );
-        if *$crate::DEBUG.get().unwrap_or(&true) {
-            println!("{msg}");
-        }
-
-        unsafe {
-            if let Some(logger) = $crate::LOGGER.get() {
-                if let Err(e) = logger.log(&msg) {
-                    eprintln!("Error logging to file: {e}");
-                }
-            }
-        }
-    }};
 }
